@@ -1,0 +1,403 @@
+{
+  "id": "backend",
+  "title": "Backend",
+  "order": 2,
+  "accent": "#f2994a",
+  "info": "Learning track based on roadmap.sh/backend. Goal: get through this over the summer.\nSource: https://roadmap.sh/backend",
+  "nodes": [
+    {
+      "id": "be-internet",
+      "title": "Internet & How the Web Works",
+      "status": "todo",
+      "priority": "p0",
+      "due": "",
+      "notes": "",
+      "link": "",
+      "side": "left",
+      "children": [
+        {
+          "id": "be-1",
+          "title": "How the internet works, DNS, domains, hosting",
+          "status": "todo",
+          "priority": "p0",
+          "tags": [
+            "web"
+          ],
+          "due": "",
+          "notes": "",
+          "link": ""
+        },
+        {
+          "id": "be-2",
+          "title": "HTTP/HTTPS, methods, status codes, headers",
+          "status": "todo",
+          "due": "",
+          "notes": "",
+          "link": "",
+          "requires": [
+            "be-1"
+          ]
+        },
+        {
+          "id": "be-3",
+          "title": "Browsers & how they render",
+          "status": "todo",
+          "due": "",
+          "notes": "",
+          "link": ""
+        }
+      ]
+    },
+    {
+      "id": "be-lang",
+      "title": "Language & OS Basics",
+      "status": "todo",
+      "due": "",
+      "notes": "",
+      "link": "",
+      "side": "right",
+      "requires": [
+        "be-internet"
+      ],
+      "children": [
+        {
+          "id": "be-4",
+          "title": "Pick a backend language (Python / Node / Go)",
+          "status": "todo",
+          "due": "",
+          "notes": "",
+          "link": ""
+        },
+        {
+          "id": "be-5",
+          "title": "Terminal usage & shell scripting",
+          "status": "todo",
+          "due": "",
+          "notes": "",
+          "link": ""
+        },
+        {
+          "id": "be-6",
+          "title": "OS concepts: processes, threads, memory, I/O",
+          "status": "todo",
+          "due": "",
+          "notes": "",
+          "link": ""
+        }
+      ]
+    },
+    {
+      "id": "be-vcs",
+      "title": "Version Control & Repos",
+      "status": "todo",
+      "due": "",
+      "notes": "",
+      "link": "",
+      "side": "left",
+      "requires": [
+        "be-lang"
+      ],
+      "children": [
+        {
+          "id": "be-7",
+          "title": "Git fundamentals (branch, merge, rebase)",
+          "status": "todo",
+          "due": "",
+          "notes": "",
+          "link": ""
+        },
+        {
+          "id": "be-8",
+          "title": "GitHub / GitLab workflows, PRs",
+          "status": "todo",
+          "due": "",
+          "notes": "",
+          "link": "",
+          "requires": [
+            "be-7"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "be-db",
+      "title": "Databases",
+      "status": "todo",
+      "due": "",
+      "notes": "",
+      "link": "",
+      "side": "right",
+      "requires": [
+        "be-lang"
+      ],
+      "children": [
+        {
+          "id": "be-9",
+          "title": "Relational DBs & SQL (PostgreSQL)",
+          "status": "todo",
+          "priority": "p0",
+          "tags": [
+            "databases"
+          ],
+          "due": "",
+          "notes": "",
+          "link": ""
+        },
+        {
+          "id": "be-10",
+          "title": "NoSQL (MongoDB / Redis) & when to use",
+          "status": "todo",
+          "due": "",
+          "notes": "",
+          "link": ""
+        },
+        {
+          "id": "be-11",
+          "title": "ORMs, migrations, indexing, transactions",
+          "status": "todo",
+          "due": "",
+          "notes": "",
+          "link": "",
+          "requires": [
+            "be-9"
+          ]
+        },
+        {
+          "id": "be-12",
+          "title": "Normalization, ACID, N+1 problem",
+          "status": "todo",
+          "due": "",
+          "notes": "",
+          "link": "",
+          "requires": [
+            "be-9"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "be-api",
+      "title": "APIs",
+      "status": "todo",
+      "due": "",
+      "notes": "",
+      "link": "",
+      "side": "left",
+      "requires": [
+        "be-db"
+      ],
+      "children": [
+        {
+          "id": "be-13",
+          "title": "REST & JSON APIs",
+          "status": "todo",
+          "priority": "p1",
+          "tags": [
+            "api"
+          ],
+          "due": "",
+          "notes": "",
+          "link": ""
+        },
+        {
+          "id": "be-14",
+          "title": "Authentication: JWT, OAuth2, sessions",
+          "status": "todo",
+          "priority": "p1",
+          "tags": [
+            "api",
+            "security"
+          ],
+          "due": "",
+          "notes": "",
+          "link": "",
+          "requires": [
+            "be-13"
+          ]
+        },
+        {
+          "id": "be-15",
+          "title": "GraphQL basics",
+          "status": "todo",
+          "due": "",
+          "notes": "",
+          "link": "",
+          "requires": [
+            "be-13"
+          ]
+        },
+        {
+          "id": "be-16",
+          "title": "API design, versioning, docs (OpenAPI)",
+          "status": "todo",
+          "due": "",
+          "notes": "",
+          "link": "",
+          "requires": [
+            "be-13"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "be-cache",
+      "title": "Caching & Performance",
+      "status": "todo",
+      "due": "",
+      "notes": "",
+      "link": "",
+      "side": "right",
+      "requires": [
+        "be-api"
+      ],
+      "children": [
+        {
+          "id": "be-17",
+          "title": "Server & client caching, CDNs",
+          "status": "todo",
+          "due": "",
+          "notes": "",
+          "link": ""
+        },
+        {
+          "id": "be-18",
+          "title": "Redis / Memcached",
+          "status": "todo",
+          "due": "",
+          "notes": "",
+          "link": ""
+        }
+      ]
+    },
+    {
+      "id": "be-sec",
+      "title": "Security",
+      "status": "todo",
+      "due": "",
+      "notes": "",
+      "link": "",
+      "side": "left",
+      "requires": [
+        "be-api"
+      ],
+      "children": [
+        {
+          "id": "be-19",
+          "title": "Hashing, encryption, HTTPS/TLS",
+          "status": "todo",
+          "due": "",
+          "notes": "",
+          "link": ""
+        },
+        {
+          "id": "be-20",
+          "title": "OWASP top 10, CORS, CSP, SQL injection",
+          "status": "todo",
+          "due": "",
+          "notes": "",
+          "link": ""
+        }
+      ]
+    },
+    {
+      "id": "be-cicd",
+      "title": "Testing, CI/CD & Deployment",
+      "status": "todo",
+      "due": "",
+      "notes": "",
+      "link": "",
+      "side": "right",
+      "requires": [
+        "be-sec",
+        "be-cache"
+      ],
+      "children": [
+        {
+          "id": "be-21",
+          "title": "Unit / integration / e2e testing",
+          "status": "todo",
+          "due": "",
+          "notes": "",
+          "link": ""
+        },
+        {
+          "id": "be-22",
+          "title": "Docker & containers",
+          "status": "todo",
+          "priority": "p2",
+          "tags": [
+            "devops"
+          ],
+          "due": "",
+          "notes": "",
+          "link": ""
+        },
+        {
+          "id": "be-23",
+          "title": "CI/CD pipelines (GitHub Actions)",
+          "status": "todo",
+          "due": "",
+          "notes": "",
+          "link": "",
+          "requires": [
+            "be-21",
+            "be-22"
+          ]
+        },
+        {
+          "id": "be-24",
+          "title": "Deploy to a cloud (AWS / Render / Fly)",
+          "status": "todo",
+          "priority": "p2",
+          "tags": [
+            "devops"
+          ],
+          "due": "",
+          "notes": "",
+          "link": "",
+          "requires": [
+            "be-22"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "be-arch",
+      "title": "Architecture & Scaling",
+      "status": "todo",
+      "due": "",
+      "notes": "",
+      "link": "",
+      "side": "left",
+      "requires": [
+        "be-cicd"
+      ],
+      "children": [
+        {
+          "id": "be-25",
+          "title": "Monolith vs microservices",
+          "status": "todo",
+          "due": "",
+          "notes": "",
+          "link": ""
+        },
+        {
+          "id": "be-26",
+          "title": "Message queues (RabbitMQ / Kafka)",
+          "status": "todo",
+          "due": "",
+          "notes": "",
+          "link": ""
+        },
+        {
+          "id": "be-27",
+          "title": "Load balancing, scaling, observability/logging",
+          "status": "todo",
+          "due": "",
+          "notes": "",
+          "link": ""
+        }
+      ]
+    }
+  ]
+}

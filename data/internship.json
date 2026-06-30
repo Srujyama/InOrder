@@ -1,0 +1,77 @@
+{
+  "id": "internship",
+  "title": "Internship",
+  "order": 4,
+  "accent": "#b07ff0",
+  "info": "Track internship tasks, goals, and deliverables here.\nAdd onboarding, weekly goals, and project milestones.",
+  "nodes": [
+    {
+      "id": "in-onboard",
+      "title": "Onboarding",
+      "status": "todo",
+      "due": "",
+      "notes": "",
+      "link": "",
+      "side": "left",
+      "children": [
+        {
+          "id": "in-1",
+          "title": "Set up dev environment & access",
+          "status": "todo",
+          "priority": "p0",
+          "tags": [
+            "onboarding"
+          ],
+          "due": "",
+          "notes": "",
+          "link": ""
+        },
+        {
+          "id": "in-2",
+          "title": "Meet team & understand the project",
+          "status": "todo",
+          "due": "",
+          "notes": "",
+          "link": ""
+        }
+      ]
+    },
+    {
+      "id": "in-goals",
+      "title": "Goals",
+      "status": "todo",
+      "due": "",
+      "notes": "",
+      "link": "",
+      "side": "right",
+      "requires": [
+        "in-onboard"
+      ],
+      "children": [
+        {
+          "id": "in-3",
+          "title": "Define summer goals with manager",
+          "status": "todo",
+          "priority": "p1",
+          "tags": [
+            "planning"
+          ],
+          "due": "",
+          "notes": "",
+          "link": ""
+        },
+        {
+          "id": "in-4",
+          "title": "First ticket / task",
+          "status": "todo",
+          "due": "",
+          "notes": "",
+          "link": "",
+          "requires": [
+            "in-3"
+          ]
+        }
+      ]
+    }
+  ]
+}

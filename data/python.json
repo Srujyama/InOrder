@@ -1,0 +1,384 @@
+{
+  "id": "python",
+  "title": "Python",
+  "order": 1,
+  "accent": "#2dd4d4",
+  "info": "Learning track based on roadmap.sh/python. Goal: get through this over the summer.\nSource: https://roadmap.sh/python",
+  "nodes": [
+    {
+      "id": "py-fund",
+      "title": "Language Fundamentals",
+      "status": "todo",
+      "priority": "p0",
+      "due": "",
+      "notes": "",
+      "link": "",
+      "side": "left",
+      "children": [
+        {
+          "id": "py-1",
+          "title": "Variables, data types, type conversion",
+          "status": "todo",
+          "priority": "p0",
+          "tags": [
+            "fundamentals"
+          ],
+          "due": "",
+          "notes": "",
+          "link": ""
+        },
+        {
+          "id": "py-2",
+          "title": "Operators (arithmetic, logical, comparison, bitwise)",
+          "status": "todo",
+          "due": "",
+          "notes": "",
+          "link": "",
+          "requires": [
+            "py-1"
+          ]
+        },
+        {
+          "id": "py-3",
+          "title": "Conditionals (if / elif / else, match)",
+          "status": "todo",
+          "due": "",
+          "notes": "",
+          "link": "",
+          "requires": [
+            "py-2"
+          ]
+        },
+        {
+          "id": "py-4",
+          "title": "Loops (for, while, break/continue, comprehensions)",
+          "status": "todo",
+          "due": "",
+          "notes": "",
+          "link": "",
+          "requires": [
+            "py-3"
+          ]
+        },
+        {
+          "id": "py-5",
+          "title": "Functions, *args/**kwargs, lambdas, scope",
+          "status": "todo",
+          "due": "",
+          "notes": "",
+          "link": "",
+          "requires": [
+            "py-4"
+          ]
+        },
+        {
+          "id": "py-6",
+          "title": "Exceptions (try/except/finally, raising, custom)",
+          "status": "todo",
+          "due": "",
+          "notes": "",
+          "link": "",
+          "requires": [
+            "py-5"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "py-ds",
+      "title": "Data Structures",
+      "status": "todo",
+      "due": "",
+      "notes": "",
+      "link": "",
+      "side": "right",
+      "requires": [
+        "py-fund"
+      ],
+      "children": [
+        {
+          "id": "py-7",
+          "title": "Lists, tuples, sets, dicts",
+          "status": "todo",
+          "priority": "p1",
+          "tags": [
+            "fundamentals"
+          ],
+          "due": "",
+          "notes": "",
+          "link": ""
+        },
+        {
+          "id": "py-8",
+          "title": "Strings & string methods, f-strings",
+          "status": "todo",
+          "due": "",
+          "notes": "",
+          "link": ""
+        },
+        {
+          "id": "py-9",
+          "title": "collections module (deque, Counter, defaultdict, namedtuple)",
+          "status": "todo",
+          "due": "",
+          "notes": "",
+          "link": "",
+          "requires": [
+            "py-7"
+          ]
+        },
+        {
+          "id": "py-10",
+          "title": "Iterators & generators (yield)",
+          "status": "todo",
+          "due": "",
+          "notes": "",
+          "link": "",
+          "requires": [
+            "py-7"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "py-oop",
+      "title": "Object-Oriented Programming",
+      "status": "todo",
+      "due": "",
+      "notes": "",
+      "link": "",
+      "side": "left",
+      "requires": [
+        "py-ds"
+      ],
+      "children": [
+        {
+          "id": "py-11",
+          "title": "Classes, objects, __init__, self",
+          "status": "todo",
+          "priority": "p1",
+          "tags": [
+            "oop"
+          ],
+          "due": "",
+          "notes": "",
+          "link": ""
+        },
+        {
+          "id": "py-12",
+          "title": "Inheritance, super(), MRO",
+          "status": "todo",
+          "due": "",
+          "notes": "",
+          "link": "",
+          "requires": [
+            "py-11"
+          ]
+        },
+        {
+          "id": "py-13",
+          "title": "Dunder methods, properties, classmethod/staticmethod",
+          "status": "todo",
+          "due": "",
+          "notes": "",
+          "link": "",
+          "requires": [
+            "py-11"
+          ]
+        },
+        {
+          "id": "py-14",
+          "title": "Dataclasses & enums",
+          "status": "todo",
+          "due": "",
+          "notes": "",
+          "link": "",
+          "requires": [
+            "py-11"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "py-pkg",
+      "title": "Modules, Packaging & Environments",
+      "status": "todo",
+      "due": "",
+      "notes": "",
+      "link": "",
+      "side": "right",
+      "requires": [
+        "py-oop"
+      ],
+      "children": [
+        {
+          "id": "py-15",
+          "title": "Modules & imports, __name__ == '__main__'",
+          "status": "todo",
+          "due": "",
+          "notes": "",
+          "link": ""
+        },
+        {
+          "id": "py-16",
+          "title": "pip, virtualenv / venv, requirements.txt",
+          "status": "todo",
+          "due": "",
+          "notes": "",
+          "link": "",
+          "requires": [
+            "py-15"
+          ]
+        },
+        {
+          "id": "py-17",
+          "title": "Poetry / pipenv, pyproject.toml",
+          "status": "todo",
+          "due": "",
+          "notes": "",
+          "link": "",
+          "requires": [
+            "py-16"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "py-std",
+      "title": "Standard Library & Tooling",
+      "status": "todo",
+      "due": "",
+      "notes": "",
+      "link": "",
+      "side": "left",
+      "requires": [
+        "py-pkg"
+      ],
+      "children": [
+        {
+          "id": "py-18",
+          "title": "os, sys, pathlib, datetime, json, re",
+          "status": "todo",
+          "due": "",
+          "notes": "",
+          "link": ""
+        },
+        {
+          "id": "py-19",
+          "title": "Type hints & mypy",
+          "status": "todo",
+          "due": "",
+          "notes": "",
+          "link": ""
+        },
+        {
+          "id": "py-20",
+          "title": "Linting & formatting (ruff, black)",
+          "status": "todo",
+          "due": "",
+          "notes": "",
+          "link": ""
+        },
+        {
+          "id": "py-21",
+          "title": "Testing (pytest, unittest, mocking)",
+          "status": "todo",
+          "priority": "p2",
+          "tags": [
+            "testing"
+          ],
+          "due": "",
+          "notes": "",
+          "link": ""
+        }
+      ]
+    },
+    {
+      "id": "py-adv",
+      "title": "Concurrency & Advanced",
+      "status": "todo",
+      "due": "",
+      "notes": "",
+      "link": "",
+      "side": "right",
+      "requires": [
+        "py-std"
+      ],
+      "children": [
+        {
+          "id": "py-22",
+          "title": "Decorators & context managers",
+          "status": "todo",
+          "due": "",
+          "notes": "",
+          "link": ""
+        },
+        {
+          "id": "py-23",
+          "title": "Threading, multiprocessing, GIL",
+          "status": "todo",
+          "due": "",
+          "notes": "",
+          "link": ""
+        },
+        {
+          "id": "py-24",
+          "title": "asyncio (async/await, event loop)",
+          "status": "todo",
+          "priority": "p2",
+          "tags": [
+            "async"
+          ],
+          "due": "",
+          "notes": "",
+          "link": "",
+          "requires": [
+            "py-23"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "py-lib",
+      "title": "Popular Libraries",
+      "status": "todo",
+      "due": "",
+      "notes": "",
+      "link": "",
+      "side": "left",
+      "requires": [
+        "py-adv"
+      ],
+      "children": [
+        {
+          "id": "py-25",
+          "title": "requests / httpx",
+          "status": "todo",
+          "due": "",
+          "notes": "",
+          "link": ""
+        },
+        {
+          "id": "py-26",
+          "title": "NumPy & Pandas (data basics)",
+          "status": "todo",
+          "due": "",
+          "notes": "",
+          "link": ""
+        },
+        {
+          "id": "py-27",
+          "title": "A web framework (Flask or FastAPI)",
+          "status": "todo",
+          "priority": "p1",
+          "tags": [
+            "web"
+          ],
+          "due": "",
+          "notes": "",
+          "link": ""
+        }
+      ]
+    }
+  ]
+}

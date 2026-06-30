@@ -1,0 +1,25 @@
+{
+  "name": "life",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "concurrently -k -n server,web -c green,cyan \"node server/index.js\" \"vite\"",
+    "server": "node server/index.js",
+    "web": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "normalize": "node scripts/normalize-data.mjs"
+  },
+  "dependencies": {
+    "express": "^4.19.2",
+    "firebase": "^12.15.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^4.3.1",
+    "concurrently": "^9.0.1",
+    "vite": "^5.4.8"
+  }
+}

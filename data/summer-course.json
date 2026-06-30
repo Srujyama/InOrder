@@ -1,0 +1,77 @@
+{
+  "id": "summer-course",
+  "title": "Summer Course",
+  "order": 3,
+  "accent": "#5b9cf0",
+  "info": "Track your summer course here. Edit this file or use the UI.\nReplace the node titles with your weeks/units and add assignments with due dates.",
+  "nodes": [
+    {
+      "id": "sc-logistics",
+      "title": "Logistics",
+      "status": "todo",
+      "due": "",
+      "notes": "",
+      "link": "",
+      "side": "left",
+      "children": [
+        {
+          "id": "sc-1",
+          "title": "Add course name, syllabus link & meeting times",
+          "status": "todo",
+          "priority": "p0",
+          "tags": [
+            "setup"
+          ],
+          "due": "",
+          "notes": "",
+          "link": ""
+        },
+        {
+          "id": "sc-2",
+          "title": "Add exam / project dates",
+          "status": "todo",
+          "priority": "p1",
+          "tags": [
+            "deadlines"
+          ],
+          "due": "",
+          "notes": "",
+          "link": ""
+        }
+      ]
+    },
+    {
+      "id": "sc-week1",
+      "title": "Week 1",
+      "status": "todo",
+      "due": "",
+      "notes": "",
+      "link": "",
+      "side": "right",
+      "requires": [
+        "sc-logistics"
+      ],
+      "children": [
+        {
+          "id": "sc-3",
+          "title": "Reading / lecture",
+          "status": "todo",
+          "due": "",
+          "notes": "",
+          "link": ""
+        },
+        {
+          "id": "sc-4",
+          "title": "Assignment 1",
+          "status": "todo",
+          "due": "",
+          "notes": "",
+          "link": "",
+          "requires": [
+            "sc-3"
+          ]
+        }
+      ]
+    }
+  ]
+}
