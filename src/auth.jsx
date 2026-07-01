@@ -13,7 +13,8 @@ export function useAuth() {
 
   useEffect(() => {
     if (!firebaseReady) return
-    // Complete a redirect sign-in if we just came back from one (the popup-blocked fallback).
+    // Complete a redirect sign-in if we just returned from one (the popup-blocked fallback).
+    // Reliable now that auth is same-origin (authDomain = our Vercel domain, /__/auth proxied).
     getRedirectResult(auth).catch(() => {})
     return onAuthStateChanged(auth, (u) => { setUser(u); setLoading(false) })
   }, [])
@@ -33,20 +34,21 @@ export function SignIn() {
   const [busy, setBusy] = useState(false)
 
   const google = () => {
-    // Popup sign-in. Open it SYNCHRONOUSLY inside the click — no setState/await before it
-    // — or the browser blocks it as non-user-initiated. The COOP header
-    // (Cross-Origin-Opener-Policy: same-origin-allow-popups, set in vercel.json) is what
-    // lets Firebase talk to the popup window in modern Chrome. authDomain stays on
-    // <project>.firebaseapp.com so Google's OAuth client trusts the redirect URI.
+    // Same-origin Google auth. authDomain = our own Vercel domain, and vercel.json proxies
+    // /__/auth/* to Firebase's handler, so the whole OAuth handshake happens on our origin —
+    // the OAuth client authorizes .../life-study-tracker-lilac.vercel.app/__/auth/handler
+    // (added in the Google Cloud console), and the session never crosses domains (no drop).
+    //
+    // Popup first (instant, keeps app state); open it SYNCHRONOUSLY in the click so the browser
+    // doesn't block it, and the COOP header keeps window.opener alive for the postMessage.
+    // If the popup is blocked/unsupported, fall back to a full-page redirect — reliable here
+    // because it's same-origin (getRedirectResult in useAuth completes it on return).
     setError('')
     signInWithPopup(auth, googleProvider)
       .then(() => setBusy(true)) // success → auth state change unmounts this screen
       .catch((e) => {
         const code = (e && e.code) || ''
         if (code === 'auth/popup-closed-by-user' || code === 'auth/cancelled-popup-request') return
-        // If the browser blocked the popup (a saved per-site setting can't be overridden by
-        // the COOP header), fall back to a full-page redirect. authDomain is on
-        // firebaseapp.com so this uses Google's authorized redirect URI (no mismatch).
         if (code === 'auth/popup-blocked' || /popup/i.test(code)) {
           signInWithRedirect(auth, googleProvider).catch((re) => setError(prettyError(re)))
           return
