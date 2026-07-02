@@ -73,6 +73,13 @@ function TrackerApp({ user }) {
   const [theme, setTheme] = useTheme()
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
+  // Deep link: open a track AND fly the map to a specific node. `key` keeps repeat
+  // clicks on the same row fresh; never cleared — the TrackView remount consumes it.
+  const [focusRequest, setFocusRequest] = useState(null)
+  const openNode = (trackId, nodeId) => {
+    setActiveId(trackId)
+    setFocusRequest({ trackId, nodeId, key: Date.now() })
+  }
   const saveTimers = useRef({})
 
   useEffect(() => {
@@ -145,9 +152,12 @@ function TrackerApp({ user }) {
         {error && <div className="banner-error" onClick={() => setError('')}>⚠ {error} (click to dismiss)</div>}
         {notice && <div className="banner-notice" onClick={() => setNotice('')}>✓ {notice} (click to dismiss)</div>}
         {activeId === 'dashboard' ? (
-          <Dashboard tracks={tracks} setActiveId={setActiveId} />
+          <Dashboard tracks={tracks} setActiveId={setActiveId} onOpenNode={openNode} />
         ) : active ? (
-          <TrackView key={active.id} track={active} updateTrack={updateTrack} onExport={() => exportTrack(active)} />
+          <TrackView
+            key={active.id} track={active} updateTrack={updateTrack} onExport={() => exportTrack(active)}
+            focusNode={focusRequest && focusRequest.trackId === active.id ? focusRequest : null}
+          />
         ) : (
           <div className="empty">Track not found.</div>
         )}
@@ -263,12 +273,14 @@ function ThemePicker({ theme, setTheme }) {
   )
 }
 
-function Dashboard({ tracks, setActiveId }) {
+function Dashboard({ tracks, setActiveId, onOpenNode }) {
   const upcoming = useMemo(() => {
     const items = []
     for (const t of tracks) {
       walk(t.nodes, (n) => {
-        if (n.due && n.status !== 'done') items.push({ ...n, track: t.title, accent: t.accent })
+        if (n.due && n.status !== 'done') {
+          items.push({ id: n.id, title: n.title, due: n.due, trackId: t.id, track: t.title, accent: t.accent })
+        }
       })
     }
     return items.sort((a, b) => a.due.localeCompare(b.due)).slice(0, 8)
@@ -281,18 +293,34 @@ function Dashboard({ tracks, setActiveId }) {
       const unlocked = buildUnlocked(t.nodes, complete)
       walk(t.nodes, (n) => {
         if (unlocked.has(n.id) && n.status === 'todo') {
-          items.push({ id: n.id, title: n.title, priority: n.priority, track: t.title, trackId: t.id, accent: t.accent })
+          items.push({ id: n.id, title: n.title, priority: n.priority, due: n.due || '￿', track: t.title, trackId: t.id, accent: t.accent })
         }
       })
     }
-    // High priority first, then track order.
-    items.sort((a, b) => (PRIORITY_RANK[a.priority] ?? 4) - (PRIORITY_RANK[b.priority] ?? 4))
+    // Same ranking as the map's ◎ Next: priority → due asc (empty last) → insertion.
+    items.sort((a, b) =>
+      (PRIORITY_RANK[a.priority] ?? 4) - (PRIORITY_RANK[b.priority] ?? 4) ||
+      (a.due < b.due ? -1 : a.due > b.due ? 1 : 0)
+    )
     return items.slice(0, 10)
   }, [tracks])
+
+  const hero = nextUp[0]
 
   return (
     <>
       <div className="head"><div className="head-top"><h2 className="dash-title">Dashboard</h2></div></div>
+
+      {hero && (
+        <div className="continue-hero" style={{ '--accent': hero.accent }}>
+          <div className="continue-copy">
+            <span className="eyebrow">// CONTINUE</span>
+            <span className="continue-title">{hero.title}</span>
+            <span className="continue-track">{hero.track}</span>
+          </div>
+          <button className="continue-btn" onClick={() => onOpenNode(hero.trackId, hero.id)}>Resume →</button>
+        </div>
+      )}
 
       <div className="dash-grid">
         {tracks.map((t) => <DashCard key={t.id} track={t} onClick={() => setActiveId(t.id)} />)}
@@ -301,9 +329,9 @@ function Dashboard({ tracks, setActiveId }) {
       <div className="section-block">
         <h3>Next up</h3>
         {nextUp.length === 0 ? (
-          <div className="empty">Nothing unlocked — mark prerequisites done to surface the next steps.</div>
+          <div className="empty">Nothing unlocked — mark prerequisites done, or open a track and use ◎ Next to find your first task.</div>
         ) : nextUp.map((item) => (
-          <div key={item.trackId + item.id} className="up-item" onClick={() => setActiveId(item.trackId)} style={{ cursor: 'pointer', '--accent': item.accent }}>
+          <div key={item.trackId + item.id} className="up-item" onClick={() => onOpenNode(item.trackId, item.id)} style={{ cursor: 'pointer', '--accent': item.accent }}>
             <span className="next-badge">next</span>
             {item.priority && <PriorityPill level={item.priority} />}
             <span>{item.title}</span>
@@ -317,7 +345,12 @@ function Dashboard({ tracks, setActiveId }) {
         {upcoming.length === 0 ? (
           <div className="empty">No due dates set yet. Add them to nodes to see them here.</div>
         ) : upcoming.map((item) => (
-          <div key={item.id} className={'up-item ' + (dueClass(item.due) === 'overdue' ? 'overdue' : '')}>
+          <div
+            key={item.trackId + item.id}
+            className={'up-item ' + (dueClass(item.due) === 'overdue' ? 'overdue' : '')}
+            onClick={() => onOpenNode(item.trackId, item.id)}
+            style={{ cursor: 'pointer' }}
+          >
             <span className={'up-due ' + dueClass(item.due)}>{fmtDue(item.due)}</span>
             <span className="nav-dot" style={{ background: item.accent }} />
             <span>{item.title}</span>
@@ -342,7 +375,7 @@ function DashCard({ track, onClick }) {
   )
 }
 
-function TrackView({ track, updateTrack, onExport }) {
+function TrackView({ track, updateTrack, onExport, focusNode }) {
   const { done, total, pct } = countTasks(track)
   const shownPct = useCountUp(pct)
   const allTags = useMemo(() => collectTags(track.nodes), [track])
@@ -383,6 +416,7 @@ function TrackView({ track, updateTrack, onExport }) {
         filter={filter}
         setFilter={setFilter}
         allTags={allTags}
+        focusNode={focusNode}
         helpers={{ STATUS_CYCLE, dueClass, fmtDue, uid }}
       />
     </>

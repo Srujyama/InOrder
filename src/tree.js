@@ -96,6 +96,48 @@ export function buildUnlocked(nodes, complete) {
   return unlocked
 }
 
+// Locked = prerequisites (own or inherited from an ancestor) unmet and not complete.
+// Applies to both branches and leaves — the "you can't start this yet" set.
+export function buildLocked(nodes, complete) {
+  const locked = new Set()
+  const reqsMet = (node) => (node.requires || []).every((r) => complete.get(r))
+  function visit(node, ancestorsMet) {
+    const meMet = ancestorsMet && reqsMet(node)
+    if (!meMet && !complete.get(node.id)) locked.add(node.id)
+    for (const c of node.children || []) visit(c, meMet)
+  }
+  for (const n of nodes) visit(n, true)
+  return locked
+}
+
+// Per-node subtree meta: Map of node id -> { done, total, firstUnlockedId }.
+// done/total count the leaves in the subtree (a leaf counts itself);
+// firstUnlockedId is the first unlocked descendant in walk order (or the node itself).
+export function buildSubtreeMeta(nodes, unlocked) {
+  const meta = new Map()
+  function visit(node) {
+    const children = node.children || []
+    let done = 0
+    let total = 0
+    let firstUnlockedId = unlocked.has(node.id) ? node.id : null
+    if (!children.length) {
+      total = 1
+      done = node.status === 'done' ? 1 : 0
+    }
+    for (const c of children) {
+      const m = visit(c)
+      done += m.done
+      total += m.total
+      if (!firstUnlockedId && m.firstUnlockedId) firstUnlockedId = m.firstUnlockedId
+    }
+    const m = { done, total, firstUnlockedId }
+    meta.set(node.id, m)
+    return m
+  }
+  for (const n of nodes) visit(n)
+  return meta
+}
+
 // Collect every distinct tag used in a track, sorted.
 export function collectTags(nodes) {
   const set = new Set()

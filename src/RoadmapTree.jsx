@@ -2,15 +2,19 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { FilterBar } from './FilterBar.jsx'
 import { PriorityPill } from './ui.jsx'
 import {
-  walk, findNode, removeNode, buildCompletion, buildUnlocked,
-  computeVisible, filterActive,
+  walk, findNode, removeNode, buildCompletion, buildUnlocked, buildLocked, buildSubtreeMeta,
+  computeVisible, filterActive, countTasks, PRIORITY_RANK,
 } from './tree.js'
 
 /*
-  Clean directional tree renderer. A single flow direction (Left→Right or Top→Down):
-  depth advances along the primary axis; siblings stack along the cross axis; a node
-  centers against its subtree. No central spine / left-right splitting (that was the
-  source of crossing-line clutter). Subtree packing guarantees no card overlap.
+  "Traveled Ink" map. A directional tree (LR or TD) where the drawing itself reads as a
+  journey — one visual channel per meaning, never spent twice:
+    COLOR = progress   (accent ink where you've traveled, graphite where you haven't)
+    FILL  = status     (filled station = done, ring+dot = doing, bold ring = next, thin = todo)
+    DASH  = "not real yet" (dotted = dependency edge, dashed = locked border/ring)
+  Tree edges are ALWAYS solid. Card opacity belongs to the filter dimming only.
+  Navigation is one primitive: locateNode(id) — expand the ancestor chain, scrollIntoView,
+  land with a crisp 0-blur ring. No pan/zoom camera: native scroll stays native.
 */
 
 const ROW_GAP = 16        // cross-axis gap between sibling subtrees
@@ -23,8 +27,9 @@ const MARGIN = 28
 // Estimated card extent before measurement.
 function CARD_EST_H(node) {
   const lines = Math.ceil((node.title || '').length / 26)
-  const metaLine = node.due || node.priority || (node.tags && node.tags.length) ? 22 : 0
-  return 28 + Math.max(1, lines) * 17 + 14 + metaLine
+  const branch = (node.children || []).length > 0
+  const metaLine = branch || node.due || node.priority || (node.tags && node.tags.length) ? 22 : 0
+  return 28 + Math.max(1, lines) * 17 + 14 + metaLine + (branch ? 11 : 0)
 }
 
 // `collapsed` is a Set of node ids whose children are hidden (UI-only, never persisted).
@@ -108,22 +113,40 @@ function defaultCollapsed(nodes, unlocked) {
   return collapsed
 }
 
-export function RoadmapTree({ track, updateTrack, filter, setFilter, allTags, helpers }) {
+const truncate = (s, n) => (s && s.length > n ? s.slice(0, n - 1) + '…' : s)
+
+export function RoadmapTree({ track, updateTrack, filter, setFilter, allTags, helpers, focusNode }) {
   const { uid } = helpers
   const wrapRef = useRef(null)
-  const canvasRef = useRef(null)
   const cardRefs = useRef({})
   const [width, setWidth] = useState(1000)
-  const [paths, setPaths] = useState([])
   const heightsRef = useRef({})
   const [layoutVersion, setLayoutVersion] = useState(0)
   const [tick, setTick] = useState(0)
   const remeasure = () => setTick((t) => t + 1)
 
-  // Completion + unlocked sets for this track.
-  const { complete, unlocked } = useMemo(() => {
+  // Status sets for this track: completion, unlocked (next-up), locked, subtree meta.
+  const { complete, unlocked, locked, meta } = useMemo(() => {
     const complete = buildCompletion(track.nodes)
-    return { complete, unlocked: buildUnlocked(track.nodes, complete) }
+    const unlocked = buildUnlocked(track.nodes, complete)
+    return {
+      complete, unlocked,
+      locked: buildLocked(track.nodes, complete),
+      meta: buildSubtreeMeta(track.nodes, unlocked),
+    }
+  }, [track])
+
+  // id -> parent id | null (locateNode expands ancestor chains; hover traces routes).
+  const parentOf = useMemo(() => {
+    const m = new Map()
+    walk(track.nodes, (n, p) => m.set(n.id, p ? p.id : null))
+    return m
+  }, [track])
+
+  const titleById = useMemo(() => {
+    const m = new Map()
+    walk(track.nodes, (n) => m.set(n.id, n.title))
+    return m
   }, [track])
 
   // Collapse state: persisted per track in localStorage; first time, smart default.
@@ -141,8 +164,62 @@ export function RoadmapTree({ track, updateTrack, filter, setFilter, allTags, he
   const [orientation, setOrientation] = useState(() => localStorage.getItem('life-orientation') || 'LR')
   useEffect(() => { localStorage.setItem('life-orientation', orientation) }, [orientation])
 
-  // Dependency-arrow visibility (calm by default; spotlight a node's deps on hover).
+  // Hover / keyboard-focus node (drives the route trace + dep spotlight).
   const [hoverId, setHoverId] = useState(null)
+
+  // ---- locate machinery: the single flight primitive ----
+  const [focusId, setFocusId] = useState(null) // node currently being located (ring + scroll)
+  const locateIdxRef = useRef(0)               // cycle pointer for the ◎ Next button
+
+  function locateNode(id) {
+    // 1. expand ONLY the ancestor chain (never touches other collapsed branches)
+    setCollapsed((prev) => {
+      const next = new Set(prev)
+      let cur = parentOf.get(id)
+      while (cur) { next.delete(cur); cur = parentOf.get(cur) }
+      return next
+    })
+    // 2. arm the flight; the effect below flies AFTER the expand re-layout commits
+    setFocusId(id)
+  }
+
+  // Priority-ranked next targets: pri asc → due asc (empty last) → document order.
+  const nextOrder = useMemo(() => {
+    const arr = []
+    let i = 0
+    walk(track.nodes, (n) => {
+      if (unlocked.has(n.id)) arr.push({ id: n.id, pri: PRIORITY_RANK[n.priority] ?? 4, due: n.due || '￿', ord: i++ })
+    })
+    arr.sort((a, b) => a.pri - b.pri || (a.due < b.due ? -1 : a.due > b.due ? 1 : 0) || a.ord - b.ord)
+    return arr.map((a) => a.id)
+  }, [track, unlocked])
+
+  const orderSig = nextOrder.join('|')
+  useEffect(() => { locateIdxRef.current = 0 }, [orderSig]) // completing a task re-targets the top pick
+
+  function locateNext() {
+    if (!nextOrder.length) return
+    locateNode(nextOrder[locateIdxRef.current % nextOrder.length])
+    locateIdxRef.current += 1
+  }
+
+  // One global shortcut: 'n' = next (never while typing or with the editor popover open).
+  useEffect(() => {
+    const onKey = (e) => {
+      if (e.key !== 'n' || e.metaKey || e.ctrlKey || e.altKey) return
+      const t = document.activeElement
+      if (t && (/^(input|textarea|select)$/i.test(t.tagName) || t.isContentEditable)) return
+      if (document.querySelector('.node-pop')) return // never scroll-jump under an open editor
+      locateNext()
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [orderSig, parentOf])
+
+  // Dashboard deep links land here (TrackView remounts per track, so this fires on mount too).
+  useEffect(() => {
+    if (focusNode && findNode(track.nodes, focusNode.nodeId)) locateNode(focusNode.nodeId)
+  }, [focusNode?.key]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const toggleCollapse = (id) =>
     setCollapsed((prev) => {
@@ -210,28 +287,37 @@ export function RoadmapTree({ track, updateTrack, filter, setFilter, allTags, he
     if (changed) setLayoutVersion((v) => v + 1)
   }, [slots, tick])
 
-  // Pass 2: build SVG paths from measured rects (relative to canvas).
-  useLayoutEffect(() => {
-    const canvas = canvasRef.current
-    if (!canvas) return
-    const box = canvas.getBoundingClientRect()
+  // The flight: runs after every re-layout so the landing self-corrects; scrollIntoView
+  // is idempotent, so double-firing during the measure pass is harmless.
+  useEffect(() => {
+    if (!focusId) return
+    const el = cardRefs.current[focusId]
+    if (!el) return
+    const motionOK = !window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    el.scrollIntoView({ behavior: motionOK ? 'smooth' : 'auto', block: 'center', inline: 'center' })
+    const t = setTimeout(() => setFocusId(null), 1600)
+    return () => clearTimeout(t)
+  }, [focusId, slots])
+
+  // Build SVG paths PURELY from layout data (slot x/y + measured ownH). No DOM rects —
+  // anchors stay exact because pass 1 already re-laid-out with real card heights.
+  const { childPaths, depPaths, ports } = useMemo(() => {
+    const isLR = orientation !== 'TD'
+    const byId = {}
+    for (const s of slots) byId[s.node.id] = s
     const rectOf = (id) => {
-      const el = cardRefs.current[id]
-      if (!el) return null
-      const b = el.getBoundingClientRect()
+      const s = byId[id]
+      if (!s) return null
       return {
-        left: b.left - box.left, right: b.right - box.left,
-        top: b.top - box.top, bottom: b.bottom - box.top,
-        cx: b.left - box.left + b.width / 2, cy: b.top - box.top + b.height / 2,
+        left: s.x, right: s.x + CARD_W,
+        top: s.y, bottom: s.y + s.ownH,
+        cx: s.x + CARD_W / 2, cy: s.y + s.ownH / 2,
       }
     }
-    const isLR = orientation !== 'TD'
     const child = []
     const dep = []
-    const ports = {} // node id -> {x,y} marker (where its incoming edge meets it)
+    const portMap = {} // node id -> {x,y} marker (where its incoming edge meets it)
 
-    // Parent -> child connectors: exit parent on the leading edge, enter child on the
-    // trailing edge, with a smooth curve in the flow direction.
     for (const s of slots) {
       if (s.depth === 0) continue
       const c = rectOf(s.node.id)
@@ -239,14 +325,13 @@ export function RoadmapTree({ track, updateTrack, filter, setFilter, allTags, he
       if (!c || !p) continue
       if (isLR) {
         child.push({ d: flowCurve(p.right, p.cy, c.left, c.cy, 'LR'), id: s.node.id })
-        ports[s.node.id] = { x: c.left, y: c.cy }
+        portMap[s.node.id] = { x: c.left, y: c.cy }
       } else {
         child.push({ d: flowCurve(p.cx, p.bottom, c.cx, c.top, 'TD'), id: s.node.id })
-        ports[s.node.id] = { x: c.cx, y: c.top }
+        portMap[s.node.id] = { x: c.cx, y: c.top }
       }
     }
 
-    // Dependency edges — calm, routed cleanly along the flow axis.
     for (const s of slots) {
       for (const reqId of s.node.requires || []) {
         const f = rectOf(reqId)
@@ -258,17 +343,25 @@ export function RoadmapTree({ track, updateTrack, filter, setFilter, allTags, he
         dep.push({ d, id: s.node.id + '<' + reqId, from: reqId, to: s.node.id })
       }
     }
+    return { childPaths: child, depPaths: dep, ports: portMap }
+  }, [slots, orientation])
 
-    setPaths((prev) => {
-      const sig = JSON.stringify([child.map((c) => c.d), dep.map((d) => d.d)])
-      if (prev.sig === sig) return prev
-      return { child, dep, ports, sig }
-    })
-  }, [slots, width, tick, track, layoutVersion, effectiveCollapsed, orientation])
+  // Route trace: hovering (or keyboard-focusing) a node lights its full root→node path.
+  const routeIds = useMemo(() => {
+    const s = new Set()
+    let c = hoverId
+    while (c) { s.add(c); c = parentOf.get(c) }
+    return s
+  }, [hoverId, parentOf])
 
-  const childPaths = paths.child || []
-  const depPaths = paths.dep || []
-  const ports = paths.ports || {}
+  const { done: trackDone, total: trackTotal } = countTasks(track)
+  const nearEmpty = track.nodes.length <= 1 && !(track.nodes[0]?.children || []).length
+
+  const stationClass = (n) =>
+    complete.get(n.id) ? 'st-done'
+    : n.status === 'doing' ? 'st-doing'
+    : unlocked.has(n.id) ? 'st-next'
+    : locked.has(n.id) ? 'st-locked' : 'st-todo'
 
   return (
     <>
@@ -276,74 +369,97 @@ export function RoadmapTree({ track, updateTrack, filter, setFilter, allTags, he
         filter={filter} setFilter={setFilter} allTags={allTags} accent={track.accent}
         onExpandAll={expandAll} onCollapseAll={collapseAll}
         orientation={orientation} setOrientation={setOrientation}
+        onLocateNext={locateNext} nextCount={nextOrder.length}
       />
-      <div className="roadmap-scroll" ref={wrapRef}>
-        <div className={'roadmap-canvas ' + (orientation === 'TD' ? 'is-td' : 'is-lr')} ref={canvasRef} style={{ height, width: contentWidth }}>
-          <svg className="roadmap-svg" width={contentWidth} height={height} style={{ '--accent': track.accent }}>
-            <defs>
-              <marker id="dep-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse">
-                <path d="M 0 1 L 9 5 L 0 9" fill="none" stroke="var(--text-faint)" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
-              </marker>
-            </defs>
+      <div className="map-frame">
+        <div className="roadmap-scroll" ref={wrapRef}>
+          <div className={'roadmap-canvas ' + (orientation === 'TD' ? 'is-td' : 'is-lr')} style={{ height, width: contentWidth }}>
+            <svg className="roadmap-svg" width={contentWidth} height={height} style={{ '--accent': track.accent }}>
+              <defs>
+                <marker id="dep-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse">
+                  <path d="M 0 1 L 9 5 L 0 9" fill="none" stroke="var(--text-faint)" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+                </marker>
+                <marker id="dep-arrow-warn" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse">
+                  <path d="M 0 1 L 9 5 L 0 9" fill="none" stroke="var(--p0)" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+                </marker>
+              </defs>
 
-            {/* dependency edges — calm; spotlight the hovered node's edges */}
-            {depPaths.map((p) => {
-              const active = hoverId && (p.from === hoverId || p.to === hoverId)
+              {/* dependency edges — calm; hover spotlights met (accent) vs unmet (warn) */}
+              {depPaths.map((p) => {
+                const active = hoverId && (p.from === hoverId || p.to === hoverId)
+                const met = complete.get(p.from)
+                return (
+                  <path key={'dep' + p.id} d={p.d}
+                    className={'edge-dep' + (active ? ' active ' + (met ? 'met' : 'unmet') : '')}
+                    markerEnd={active && !met ? 'url(#dep-arrow-warn)' : 'url(#dep-arrow)'} fill="none" />
+                )
+              })}
+
+              {/* parent → child tree connectors: traveled ink (status is pure render) */}
+              {childPaths.map((p) => {
+                const st = complete.get(p.id) ? 'is-done' : locked.has(p.id) ? 'is-locked' : 'is-open'
+                const active = routeIds.has(p.id)
+                return (
+                  <path key={'ch' + p.id} d={p.d}
+                    className={'edge-child ' + st + (active ? ' active' : '')} fill="none" />
+                )
+              })}
+
+              {/* station markers encode status: filled=done, ring+dot=doing, bold=next */}
+              {slots.filter((s) => s.depth > 0 && ports[s.node.id]).map((s) => {
+                const pt = ports[s.node.id]
+                const st = stationClass(s.node)
+                const onRoute = routeIds.has(s.node.id)
+                return (
+                  <g key={'st' + s.node.id} className={'station ' + st + (onRoute ? ' on-route' : '')}>
+                    {st === 'st-done' && <circle cx={pt.x} cy={pt.y} r="4" />}
+                    {st === 'st-doing' && <><circle cx={pt.x} cy={pt.y} r="4" className="ring" /><circle cx={pt.x} cy={pt.y} r="2" className="core" /></>}
+                    {st === 'st-next' && <circle cx={pt.x} cy={pt.y} r="4.5" className="ring bold" />}
+                    {st === 'st-todo' && <circle cx={pt.x} cy={pt.y} r="3.5" className="ring dim" />}
+                    {st === 'st-locked' && <circle cx={pt.x} cy={pt.y} r="3.5" className="ring dashed" />}
+                  </g>
+                )
+              })}
+            </svg>
+
+            {slots.map((s) => {
+              const dim = isActive && visible && !visible.has(s.node.id)
               return (
-                <path key={'dep' + p.id} d={p.d} className={'edge-dep' + (active ? ' active' : '')}
-                  markerEnd="url(#dep-arrow)" fill="none" />
+                <NodeCard
+                  key={s.node.id}
+                  slot={s}
+                  accent={track.accent}
+                  cardRefs={cardRefs}
+                  helpers={helpers}
+                  unlocked={unlocked.has(s.node.id)}
+                  locked={locked.has(s.node.id)}
+                  located={focusId === s.node.id}
+                  collapsed={effectiveCollapsed.has(s.node.id)}
+                  dimmed={dim}
+                  stats={meta.get(s.node.id)}
+                  completeMap={complete}
+                  titleById={titleById}
+                  allTags={allTags}
+                  onMeasure={remeasure}
+                  onHover={setHoverId}
+                  onLocate={locateNode}
+                  onChange={(mut) => updateTrack(track.id, (t) => { const n = findNode(t.nodes, s.node.id); if (n) mut(n); return t })}
+                  onAddChild={() => updateTrack(track.id, (t) => {
+                    const n = findNode(t.nodes, s.node.id)
+                    if (n) { n.children = n.children || []; n.children.push({ id: uid('n'), title: 'New item', status: 'todo', due: '', notes: '', link: '', children: [] }) }
+                    return t
+                  })}
+                  onDelete={() => updateTrack(track.id, (t) => { removeNode(t.nodes, s.node.id); return t })}
+                  onToggleCollapse={() => { toggleCollapse(s.node.id); remeasure() }}
+                />
               )
             })}
+          </div>
+        </div>
 
-            {/* parent → child tree connectors (the primary, confident lines) */}
-            {childPaths.map((p) => {
-              const active = hoverId && p.id === hoverId
-              return (
-                <path key={'ch' + p.id} d={p.d}
-                  className={'edge-child' + (active ? ' active' : '')}
-                  style={{ stroke: track.accent }} fill="none" />
-              )
-            })}
-
-            {/* station markers where each edge meets a node */}
-            {slots.filter((s) => s.depth > 0 && ports[s.node.id]).map((s) => {
-              const pt = ports[s.node.id]
-              return (
-                <g key={'st' + s.node.id}>
-                  <circle cx={pt.x} cy={pt.y} r="4" className="spine-bead-ring" style={{ stroke: track.accent }} />
-                  <circle cx={pt.x} cy={pt.y} r="2" className="spine-bead" style={{ fill: track.accent }} />
-                </g>
-              )
-            })}
-          </svg>
-
-          {slots.map((s) => {
-            const dim = isActive && visible && !visible.has(s.node.id)
-            return (
-              <NodeCard
-                key={s.node.id}
-                slot={s}
-                accent={track.accent}
-                cardRefs={cardRefs}
-                helpers={helpers}
-                unlocked={unlocked.has(s.node.id)}
-                collapsed={effectiveCollapsed.has(s.node.id)}
-                dimmed={dim}
-                allTags={allTags}
-                onMeasure={remeasure}
-                onHover={setHoverId}
-                onChange={(mut) => updateTrack(track.id, (t) => { const n = findNode(t.nodes, s.node.id); if (n) mut(n); return t })}
-                onAddChild={() => updateTrack(track.id, (t) => {
-                  const n = findNode(t.nodes, s.node.id)
-                  if (n) { n.children = n.children || []; n.children.push({ id: uid('n'), title: 'New item', status: 'todo', due: '', notes: '', link: '', children: [] }) }
-                  return t
-                })}
-                onDelete={() => updateTrack(track.id, (t) => { removeNode(t.nodes, s.node.id); return t })}
-                onToggleCollapse={() => { toggleCollapse(s.node.id); remeasure() }}
-              />
-            )
-          })}
-
+        {/* sticky strip: legend + add-topic ride the viewport bottom while the map scrolls */}
+        <div className="map-overlays">
+          <MapLegend done={trackDone} total={trackTotal} accent={track.accent} />
           <button
             className="add-topic-btn"
             onClick={() => updateTrack(track.id, (t) => {
@@ -354,8 +470,59 @@ export function RoadmapTree({ track, updateTrack, filter, setFilter, allTags, he
             + Add topic
           </button>
         </div>
+
+        {nearEmpty && (
+          <div className="map-hint">
+            Nest steps with <b>+ child</b> in the ⋯ menu, chain order with prerequisites —
+            then <b>◎ Next</b> always points at your next task.
+          </div>
+        )}
       </div>
     </>
+  )
+}
+
+// The legend shares the live edge/station classes, so it can never drift from the map.
+function MapLegend({ done, total, accent }) {
+  const [open, setOpen] = useState(() => {
+    const saved = localStorage.getItem('life-legend-open')
+    if (saved != null) return saved === '1'
+    return window.matchMedia('(min-width: 1100px)').matches
+  })
+  const toggle = () => setOpen((o) => { localStorage.setItem('life-legend-open', o ? '0' : '1'); return !o })
+
+  if (!open) return <button className="legend-tab" onClick={toggle} title="Show map key">KEY</button>
+
+  const Row = ({ label, children }) => (
+    <div className="row">
+      <svg width="26" height="10" viewBox="0 0 26 10">{children}</svg>
+      {label}
+    </div>
+  )
+
+  return (
+    <div className="map-legend" style={{ '--accent': accent }}>
+      <button className="row legend-head" onClick={toggle} title="Hide map key">KEY ✕</button>
+      <Row label="done">
+        <line className="edge-child is-done" x1="0" y1="5" x2="14" y2="5" />
+        <g className="station st-done"><circle cx="20" cy="5" r="3.5" /></g>
+      </Row>
+      <Row label="in progress">
+        <g className="station st-doing"><circle cx="20" cy="5" r="3.5" className="ring" /><circle cx="20" cy="5" r="1.6" className="core" /></g>
+        <line className="edge-child is-open" x1="0" y1="5" x2="14" y2="5" />
+      </Row>
+      <Row label="next up">
+        <g className="station st-next"><circle cx="20" cy="5" r="4" className="ring bold" /></g>
+      </Row>
+      <Row label="locked">
+        <line className="edge-child is-locked" x1="0" y1="5" x2="14" y2="5" />
+        <g className="station st-locked"><circle cx="20" cy="5" r="3.5" className="ring dashed" /></g>
+      </Row>
+      <Row label="prereq">
+        <line className="edge-dep" x1="0" y1="5" x2="24" y2="5" />
+      </Row>
+      <div className="foot tnum">{done}/{total} tasks</div>
+    </div>
   )
 }
 
@@ -367,7 +534,11 @@ function autoGrow(el) {
 
 const STATUS_GLYPH = { todo: '', doing: '–', done: '✓' }
 
-function NodeCard({ slot, accent, cardRefs, helpers, unlocked, collapsed, dimmed, allTags, onMeasure, onHover, onChange, onAddChild, onDelete, onToggleCollapse }) {
+function NodeCard({
+  slot, accent, cardRefs, helpers, unlocked, locked, located, collapsed, dimmed,
+  stats, completeMap, titleById, allTags,
+  onMeasure, onHover, onLocate, onChange, onAddChild, onDelete, onToggleCollapse,
+}) {
   const { STATUS_CYCLE, dueClass, fmtDue } = helpers
   const { node, x, y, depth } = slot
   const hasChildren = (node.children || []).length > 0
@@ -383,8 +554,14 @@ function NodeCard({ slot, accent, cardRefs, helpers, unlocked, collapsed, dimmed
   if (node.status === 'doing') cls.push('doing')
   if (depth === 0) cls.push('topic'); else cls.push('leaf')
   if (unlocked && node.status === 'todo') cls.push('next-up')
+  if (locked && node.status === 'todo') cls.push('locked')
+  if (located) cls.push('located')
   if (dimmed) cls.push('dimmed')
   if (open) cls.push('editing')
+
+  // Name the blocker: only for the node's OWN unmet requires (ancestor locks stay quiet).
+  const unmetReqs = (node.requires || []).filter((r) => !completeMap.get(r))
+  const pct = stats && stats.total ? Math.round((stats.done / stats.total) * 100) : 0
 
   return (
     <div
@@ -393,6 +570,8 @@ function NodeCard({ slot, accent, cardRefs, helpers, unlocked, collapsed, dimmed
       style={{ left: x, top: y, width: CARD_W, '--accent': accent, borderColor: depth === 0 ? 'var(--accent-line)' : undefined }}
       onMouseEnter={() => onHover && onHover(node.id)}
       onMouseLeave={() => onHover && onHover(null)}
+      onFocusCapture={() => onHover && onHover(node.id)}
+      onBlurCapture={() => onHover && onHover(null)}
     >
       <div className="node-row">
         <button
@@ -418,11 +597,30 @@ function NodeCard({ slot, accent, cardRefs, helpers, unlocked, collapsed, dimmed
       </div>
 
       <div className="node-tags">
+        {hasChildren && stats && <span className="count-chip tnum">{stats.done}/{stats.total}</span>}
+        {hasChildren && collapsed && stats && stats.firstUnlockedId && (
+          <button className="reveal-chip" onClick={(e) => { e.stopPropagation(); onLocate(stats.firstUnlockedId) }}>
+            ⌖ next inside
+          </button>
+        )}
         {unlocked && node.status === 'todo' && <span className="next-badge">next up</span>}
+        {unmetReqs.length > 0 && node.status === 'todo' && (
+          <button
+            className="req-chip"
+            title={unmetReqs.map((r) => titleById.get(r)).join(', ')}
+            onClick={() => onLocate(unmetReqs[0])}
+          >
+            after: {truncate(titleById.get(unmetReqs[0]) || '?', 18)}{unmetReqs.length > 1 ? ` +${unmetReqs.length - 1}` : ''}
+          </button>
+        )}
         {node.due && <span className={'due-pill ' + dueClass(node.due)}>{fmtDue(node.due)}</span>}
         {node.priority && <PriorityPill level={node.priority} />}
         {(node.tags || []).map((t) => <span key={t} className="tag-chip">{t}</span>)}
       </div>
+
+      {hasChildren && stats && (
+        <div className="node-progress"><i style={{ width: pct + '%' }} /></div>
+      )}
 
       {open && (
         <NodePopover

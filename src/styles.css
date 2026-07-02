@@ -1,7 +1,7 @@
 /* ============================================================================
    life — "Blueprint / Technical Atlas" design system
    A draftsman's blueprint meets a transit map. Graphite-navy paper, one electric
-   cyan accent, Space Grotesk + IBM Plex Mono, faint grid texture, station-marker
+   cyan accent, Chivo + IBM Plex Mono, faint grid texture, station-marker
    nodes. Color reserved for one per-track accent + priority ink-tints.
    ========================================================================== */
 
@@ -375,6 +375,10 @@ input, textarea { font-family: inherit; }
 .filter-btn:hover, .filter-btn.open { border-color: var(--line-strong); color: var(--text); }
 .filter-btn.has-value { color: var(--accent); background: var(--surface-3); border-color: var(--line); }
 .filter-btn .caret { font-size: 9px; color: var(--text-faint); }
+/* ◎ Next — fly to your next unlocked task */
+.filter-btn.locate-next { color: var(--accent); background: var(--accent-soft); border-color: var(--accent-line); }
+.filter-btn.locate-next:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); }
+.filter-btn.locate-next:disabled { color: var(--text-faint); background: transparent; border-color: var(--line); cursor: default; }
 .menu-pop {
   position: absolute; top: calc(100% + 6px); left: 0; z-index: 30;
   min-width: 168px; background: var(--surface); border: 1px solid var(--line);
@@ -423,21 +427,43 @@ input, textarea { font-family: inherit; }
 
 /* ---------- roadmap tree ---------- */
 .roadmap-scroll { position: relative; width: 100%; margin-top: var(--s5); overflow-x: auto; overflow-y: hidden; padding-bottom: var(--s2); }
+
+/* theme-aware scrollbars — the default white track glares against the blueprint */
+* { scrollbar-width: thin; scrollbar-color: var(--line-strong) transparent; }
+*::-webkit-scrollbar { width: 8px; height: 8px; }
+*::-webkit-scrollbar-track { background: transparent; }
+*::-webkit-scrollbar-thumb { background: var(--line-strong); border-radius: 0; }
+*::-webkit-scrollbar-thumb:hover { background: var(--text-faint); }
 .roadmap-canvas { position: relative; min-height: 360px; }
 .roadmap-svg { position: absolute; inset: 0; pointer-events: none; z-index: 0; overflow: visible; }
 
-/* transit-map lines: clean, confident parent→child strokes */
-.edge-child { stroke-width: 2; opacity: 0.55; stroke-linecap: round; transition: opacity var(--t-base), stroke-width var(--t-base); }
-.edge-child.active { opacity: 1; stroke-width: 2.75; }
-/* dependency edges — calm and recessive; only assert themselves on hover */
+/* traveled ink: tree edges are ALWAYS solid; COLOR/weight = progress.
+   accent = traveled (child done), graphite = locked, half-ink = open. */
+.edge-child { stroke: var(--accent); stroke-width: 2; stroke-linecap: round;
+  transition: opacity var(--t-base), stroke var(--t-base), stroke-width var(--t-base); }
+.edge-child.is-done   { opacity: 0.85; }
+.edge-child.is-open   { opacity: 0.45; }
+.edge-child.is-locked { stroke: var(--line-strong); opacity: 0.45; stroke-width: 1.5; }
+.edge-child.active    { stroke: var(--accent); opacity: 1; stroke-width: 2.75; }
+
+/* dependency edges — dotted = "not yet real"; hover inks met (accent) vs unmet (warn) */
 .edge-dep {
   stroke: var(--text-faint); stroke-width: 1; stroke-dasharray: 1 6; stroke-linecap: round;
   opacity: 0.28; transition: opacity var(--t-base), stroke-width var(--t-base), stroke-dasharray var(--t-base);
 }
-.edge-dep.active { opacity: 0.9; stroke-width: 1.5; stroke-dasharray: 4 4; stroke: var(--accent); }
-/* station markers where an edge meets a node */
-.spine-bead { fill: var(--accent); }
-.spine-bead-ring { fill: var(--bg); stroke: var(--accent); stroke-width: 1.5; }
+.edge-dep.active { opacity: 0.9; stroke-width: 1.5; stroke-dasharray: 4 4; }
+.edge-dep.active.met   { stroke: var(--accent); }
+.edge-dep.active.unmet { stroke: var(--p0); }
+
+/* station markers encode status: FILL is the channel.
+   filled = done · ring+dot = doing · bold ring = next · thin grey = todo · dashed = locked */
+.station circle       { fill: var(--accent); stroke: var(--bg); stroke-width: 1.5; } /* st-done default */
+.station .ring        { fill: var(--bg); stroke: var(--accent); stroke-width: 1.5; }
+.station .ring.bold   { stroke-width: 2; }
+.station .ring.dim    { stroke: var(--line-strong); }
+.station .ring.dashed { stroke: var(--text-faint); stroke-dasharray: 2 2; }
+.station .core        { fill: var(--accent); stroke: none; }
+.station.on-route .ring, .station.on-route circle { stroke-width: 2.25; }
 
 /* node card */
 .node-card {
@@ -463,6 +489,12 @@ input, textarea { font-family: inherit; }
   background: color-mix(in srgb, var(--accent) 7%, var(--surface));
 }
 .node-card.dimmed { opacity: 0.28; }
+/* locked = DASH channel only (never opacity — that belongs to the filter dimming) */
+.node-card.locked { border-style: dashed; }
+.node-card.locked .node-title { color: var(--text-dim); }
+.node-card.locked .check { border-style: dashed; }
+/* landing cue after a locate flight — crisp spread-only ring, zero blur */
+.node-card.located { box-shadow: inset 2px 0 0 var(--accent), 0 0 0 2px var(--accent); z-index: 3; }
 
 .node-row { display: flex; align-items: flex-start; gap: var(--s2); }
 .node-card .check {
@@ -538,6 +570,38 @@ input, textarea { font-family: inherit; }
 .tag-chip .x { color: var(--text-faint); cursor: pointer; font-size: 12px; }
 .tag-chip .x:hover { color: var(--p0); }
 
+/* branch done/total count */
+.count-chip {
+  font-family: var(--mono); font-size: 10.5px; color: var(--text-dim);
+  background: var(--surface-2); border: 1px solid var(--line);
+  padding: var(--pill-pad); border-radius: var(--r-xs);
+}
+/* collapsed branch that contains your next task — one click to expand + fly */
+.reveal-chip {
+  font-family: var(--mono); font-size: 9.5px; letter-spacing: var(--track-caps-tight); text-transform: uppercase;
+  color: var(--accent); background: var(--accent-soft); border: 1px solid var(--accent-line);
+  padding: var(--pill-pad); border-radius: var(--r-xs); cursor: pointer;
+}
+/* names the blocker on a locked node; click flies to it */
+.req-chip {
+  font-family: var(--mono); font-size: 9.5px; font-weight: 500;
+  letter-spacing: var(--track-caps-tight); text-transform: uppercase;
+  color: var(--text-faint); background: transparent; border: 1px dashed var(--line-strong);
+  padding: var(--pill-pad); border-radius: var(--r-xs); cursor: pointer;
+  transition: color var(--t-fast), border-color var(--t-fast);
+}
+.req-chip:hover { color: var(--accent); border-color: var(--accent-line); }
+
+/* micro progress bar on branch cards */
+.node-progress {
+  height: 3px; margin-top: var(--s2); margin-left: calc(18px + var(--s2));
+  background: var(--surface-3); border-radius: 1px; overflow: hidden;
+}
+.node-progress i {
+  display: block; height: 100%; background: var(--accent); border-radius: 1px;
+  transition: width var(--t-slow) var(--ease-in-out);
+}
+
 /* detail popover — anchored just below the card; card gets .editing z-index */
 .node-pop-backdrop { position: fixed; inset: 0; z-index: 89; background: transparent; }
 .node-pop {
@@ -570,15 +634,88 @@ input, textarea { font-family: inherit; }
 .pop-actions button.danger:hover { border-color: var(--p0); color: var(--p0); }
 .pop-link { font-size: 11.5px; color: var(--accent); text-decoration: none; }
 
+/* the map frame hosts the overlays (legend, add-topic, hint) over the scroller */
+.map-frame { position: relative; }
+/* zero-height sticky strip: its absolute children float just above the viewport
+   bottom while the map is in view, instead of hiding at the frame's far end */
+.map-overlays {
+  position: sticky; bottom: 0; height: 0; z-index: 3; pointer-events: none;
+}
+.map-overlays > * { pointer-events: auto; }
+
 .add-topic-btn {
-  position: absolute; left: 50%; transform: translateX(-50%); bottom: -4px;
-  background: transparent; border: 1px dashed var(--line); color: var(--text-dim);
-  border-radius: var(--r-pill); padding: 8px 18px; font-size: 12.5px; z-index: 2;
-  transition: all var(--t-fast);
+  position: absolute; right: var(--s3); bottom: var(--s3); z-index: 3;
+  background: var(--surface); border: 1px dashed var(--line); color: var(--text-dim);
+  border-radius: var(--r-pill); padding: 8px 18px; font-size: 12.5px;
+  transition: border-color var(--t-fast), color var(--t-fast);
 }
 .add-topic-btn:hover { border-color: var(--accent); color: var(--text); }
 
+/* map key — built from the LIVE edge/station classes so it can never drift */
+.map-legend {
+  position: absolute; left: var(--s3); bottom: var(--s3); z-index: 3;
+  background: var(--surface); border: 1px solid var(--line-strong); border-radius: var(--r-sm);
+  padding: var(--s2) var(--s3); display: flex; flex-direction: column; gap: var(--s1);
+}
+.map-legend .row {
+  display: flex; align-items: center; gap: var(--s2);
+  font-family: var(--mono); font-size: 9.5px; font-weight: 500;
+  letter-spacing: var(--track-caps); text-transform: uppercase; color: var(--text-dim);
+}
+.map-legend .legend-head {
+  background: transparent; border: none; padding: 0; cursor: pointer;
+  color: var(--text-faint); justify-content: space-between;
+}
+.map-legend .legend-head:hover { color: var(--text); }
+.map-legend svg { overflow: visible; flex: none; }
+.map-legend .foot {
+  margin-top: var(--s1); padding-top: var(--s1); border-top: 1px solid var(--line);
+  font-family: var(--mono); font-size: 10px; color: var(--text-faint); font-variant-numeric: tabular-nums;
+}
+.legend-tab {
+  position: absolute; left: var(--s3); bottom: var(--s3); z-index: 3;
+  font-family: var(--mono); font-size: 9.5px; letter-spacing: var(--track-caps); text-transform: uppercase;
+  background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-sm);
+  color: var(--text-faint); padding: 4px 8px; cursor: pointer;
+  transition: color var(--t-fast), border-color var(--t-fast);
+}
+.legend-tab:hover { color: var(--text); border-color: var(--line-strong); }
+
+/* first-run hint on a near-empty track */
+.map-hint {
+  position: absolute; left: calc(28px + 280px + 24px); top: 28px; z-index: 2;
+  max-width: 260px; background: var(--surface); border: 1px dashed var(--line-strong);
+  border-radius: var(--r-md); padding: var(--s3) var(--s4);
+  font-size: 12.5px; color: var(--text-dim);
+}
+.map-hint b { color: var(--text); font-weight: 600; }
+
 /* ---------- dashboard ---------- */
+/* Continue hero — the single next task, one click from resuming on the map */
+.continue-hero {
+  display: flex; align-items: center; gap: var(--s4);
+  background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-md);
+  box-shadow: inset 2px 0 0 var(--accent);
+  padding: var(--s4) var(--s5); margin-bottom: var(--s5);
+}
+.continue-copy { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.continue-copy .eyebrow {
+  font-family: var(--mono); font-size: 9.5px; font-weight: 500;
+  letter-spacing: var(--track-caps); text-transform: uppercase; color: var(--accent);
+}
+.continue-title {
+  font-size: 15px; font-weight: 600; letter-spacing: -0.01em;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.continue-track { font-size: 11.5px; color: var(--text-faint); }
+.continue-btn {
+  margin-left: auto; flex: none;
+  background: var(--accent-soft); border: 1px solid var(--accent-line); color: var(--accent);
+  border-radius: var(--r-sm); font-size: 12.5px; padding: 7px 14px;
+  transition: background var(--t-fast), border-color var(--t-fast);
+}
+.continue-btn:hover { border-color: var(--accent); }
+
 .dash-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: var(--s4); margin-top: var(--s2); }
 .dash-card {
   background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-xl);

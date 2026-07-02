@@ -15,7 +15,7 @@ function SearchIcon() {
   )
 }
 
-export function FilterBar({ filter, setFilter, allTags, accent, onExpandAll, onCollapseAll, orientation, setOrientation }) {
+export function FilterBar({ filter, setFilter, allTags, accent, onExpandAll, onCollapseAll, orientation, setOrientation, onLocateNext, nextCount }) {
   // Segmented status: single-select view (all/one status). Maps to filter.status Set.
   const activeSeg = filter.status.size === 1 ? [...filter.status][0] : 'all'
   const segRefs = useRef({})
@@ -79,6 +79,17 @@ export function FilterBar({ filter, setFilter, allTags, accent, onExpandAll, onC
         <span className="switch" />
         Next up
       </button>
+
+      {onLocateNext && (
+        <button
+          className="filter-btn locate-next"
+          onClick={onLocateNext}
+          disabled={!nextCount}
+          title="Jump to your next unlocked task (n)"
+        >
+          ◎ Next{nextCount ? ` · ${nextCount}` : ''}
+        </button>
+      )}
 
       {setOrientation && (
         <div className="orient-toggle" role="group" aria-label="Layout direction">

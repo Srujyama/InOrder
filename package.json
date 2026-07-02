@@ -9,6 +9,7 @@
     "web": "vite",
     "build": "vite build",
     "preview": "vite preview",
+    "test": "vite-node test/tree.test.js",
     "normalize": "node scripts/normalize-data.mjs"
   },
   "dependencies": {
@@ -20,6 +21,7 @@
   "devDependencies": {
     "@vitejs/plugin-react": "^4.3.1",
     "concurrently": "^9.0.1",
-    "vite": "^5.4.8"
+    "vite": "^5.4.8",
+    "vite-node": "^6.0.0"
   }
 }
